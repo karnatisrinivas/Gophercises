@@ -5,12 +5,16 @@ import (
 	"flag"
 	"os"
 	"strings"
+	"time"
 
 )
 func main(){
 	fileName := flag.String("csv", "problems.csv", "file name of the csv file")
+	// Flag for filename
+	timeSeconds := flag.Int("time", 15, "Time limit for the quiz")
 	flag.Parse()
-	_ = fileName 
+
+
 	// fmt.Println(*fileName) Default, just passing filename gives address
 
 	file, err := os.Open(*fileName) 
@@ -24,16 +28,31 @@ func main(){
 		fmt.Println("Content is the csv file is not readable")
 	}
 	problems := parseData(lines)
+
+	timer := time.NewTimer(time.Duration(*timeSeconds)*time.Second)
+
 	correctCount := 0
 	for _, p := range problems{
 		fmt.Printf("%s = \n", p.q)
-		var answer string
-		fmt.Scanf("%s", &answer)
-		if(answer == p.a){
-			correctCount+=1
+		answerChannel :=make(chan string)
+		go func(){
+	
+			var answer string
+			fmt.Scanf("%s\n", &answer)
+			answerChannel <- answer
+		}()
+
+		select {
+		case <-timer.C:
+			fmt.Printf("You got %v correct out of %v\n", correctCount, len(lines))
+			return
+		case answer := <-answerChannel:
+			if answer==p.a{
+				correctCount++
+			}
 		}
 	}
-	fmt.Printf("You got %v correct out of %v\n", correctCount, len(lines))
+	fmt.Printf("\nYou got %v correct out of %v\n", correctCount, len(lines))
 }
 
 func parseData(lines [][]string) []problem {
